@@ -137,3 +137,32 @@ class BudgetResponse(BaseModel):
 class PaymentCreate(BaseModel):
     budget_id: int
     metodo_pago: str
+
+class InstallmentResponse(BaseModel):
+    id: int
+    numero_pago: int
+    fecha_vencimiento: date
+    monto: float
+    estado: str
+    fecha_pago: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+class PaymentPlanCreate(BaseModel):
+    patient_id: int
+    budget_id: Optional[int] = None
+    monto_total: float
+    plazo_meses: int
+    dia_corte: int
+
+class PaymentPlanResponse(BaseModel):
+    id: int
+    patient_id: int
+    monto_total: float
+    saldo_pendiente: float
+    estado: str
+    mensualidades: List[InstallmentResponse] = []
+    
+    class Config:
+        from_attributes = True

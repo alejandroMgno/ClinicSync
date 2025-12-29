@@ -3,10 +3,11 @@ from sqlalchemy.orm import relationship
 from database import Base
 import datetime
 
+# Utility Mixin para borrado lógico
 class SoftDeleteMixin:
     deleted_at = Column(DateTime, nullable=True)
 
-# --- MÓDULO A: SAAS ---
+# --- MÓDULO A: SAAS Y USUARIOS ---
 class Tenant(Base, SoftDeleteMixin):
     __tablename__ = "tenants"
     id = Column(Integer, primary_key=True, index=True)
@@ -40,9 +41,10 @@ class User(Base, SoftDeleteMixin):
     universidad = Column(String(150), nullable=True)
     especialidad = Column(String(100), nullable=True)
     porcentaje_comision_default = Column(DECIMAL(10, 2), default=0.0)
+    
     tenant = relationship("Tenant", back_populates="users")
     cortes_caja = relationship("CashCut", back_populates="usuario")
-    movimientos_inventario = relationship("InventoryMovement", back_populates="usuario") # <--- NUEVA RELACION
+    movimientos_inventario = relationship("InventoryMovement", back_populates="usuario")
 
 class Branch(Base, SoftDeleteMixin):
     __tablename__ = "branches"
@@ -88,7 +90,7 @@ class PatientFile(Base):
     url_archivo = Column(String(255))
     tipo = Column(String(50))
 
-# --- MÓDULO C: CLÍNICA ---
+# --- MÓDULO C: CLÍNICA Y CITAS ---
 class Appointment(Base, SoftDeleteMixin):
     __tablename__ = "appointments"
     id = Column(Integer, primary_key=True, index=True)
@@ -110,7 +112,7 @@ class AppointmentFile(Base):
     appointment_id = Column(Integer, ForeignKey("appointments.id"))
     nombre_archivo = Column(String(150))
     tipo_mime = Column(String(50))
-    contenido_base64 = Column(Text)
+    url_archivo = Column(String(500)) 
     created_at = Column(DateTime, default=datetime.datetime.now)
     cita = relationship("Appointment", back_populates="archivos")
 
@@ -160,7 +162,6 @@ class InventoryItem(Base, SoftDeleteMixin):
     stock = Column(Integer)
     unidad = Column(String(20))
     costo = Column(Float, default=0.0)
-
     tenant = relationship("Tenant", back_populates="inventario")
 
 class ServiceMaterial(Base):
@@ -174,14 +175,13 @@ class InventoryMovement(Base):
     __tablename__ = "inventory_movements"
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("inventory_items.id"))
-    user_id = Column(Integer, ForeignKey("users.id")) # <--- CAMPO NUEVO: RESPONSABLE
+    user_id = Column(Integer, ForeignKey("users.id"))
     tipo = Column(String(20))
     cantidad = Column(Integer)
     fecha = Column(DateTime, default=datetime.datetime.now)
-    
-    usuario = relationship("User", back_populates="movimientos_inventario") # <--- RELACIÓN
+    usuario = relationship("User", back_populates="movimientos_inventario")
 
-# --- MÓDULO E: FINANZAS ---
+# --- MÓDULO E: FINANZAS Y PRESUPUESTOS ---
 class Budget(Base, SoftDeleteMixin):
     __tablename__ = "budgets"
     id = Column(Integer, primary_key=True, index=True)
@@ -247,22 +247,40 @@ class Invoice(Base):
     uuid_sat = Column(String(100))
     xml_url = Column(String(255))
 
+# --- MÓDULO F: FINANCIAMIENTO (ORTODONCIA) ---
+# (Versión final consolidada)
 class PaymentPlan(Base, SoftDeleteMixin):
     __tablename__ = "payment_plans"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"))
     patient_id = Column(Integer, ForeignKey("patients.id"))
-    total_deuda = Column(Float)
-    meses_plazo = Column(Integer)
-    estado = Column(String(20))
+    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=True)
+    
+    monto_total = Column(Float)
+    saldo_pendiente = Column(Float)
+    plazo_meses = Column(Integer)
+    dia_corte = Column(Integer)
+    estado = Column(String(20), default="ACTIVO")
+    
+    created_at = Column(DateTime, default=datetime.datetime.now)
 
-class PlanInstallment(Base):
-    __tablename__ = "plan_installments"
+    tenant = relationship("Tenant")
+    paciente = relationship("Patient")
+    presupuesto = relationship("Budget")
+    mensualidades = relationship("PaymentInstallment", back_populates="plan", cascade="all, delete-orphan")
+
+class PaymentInstallment(Base):
+    __tablename__ = "payment_installments"
     id = Column(Integer, primary_key=True, index=True)
-    plan_id = Column(Integer, ForeignKey("payment_plans.id"))
-    numero_mes = Column(Integer)
+    payment_plan_id = Column(Integer, ForeignKey("payment_plans.id"))
+    
+    numero_pago = Column(Integer)
     fecha_vencimiento = Column(Date)
     monto = Column(Float)
-    pagado_bool = Column(Boolean, default=False)
+    estado = Column(String(20), default="PENDIENTE")
+    fecha_pago = Column(DateTime, nullable=True)
+    
+    plan = relationship("PaymentPlan", back_populates="mensualidades")
 
 class DoctorCommission(Base):
     __tablename__ = "doctor_commissions"
