@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from typing import List
 import database, schemas, crud, models, security
 
@@ -7,6 +8,8 @@ router = APIRouter(
     prefix="/citas",
     tags=["Agenda y Citas"]
 )
+class EstadoUpdate(BaseModel):
+    estado: str
 
 # --- RUTAS PROTEGIDAS ---
 
@@ -85,3 +88,13 @@ def cancelar_cita(
     db.delete(cita)
     db.commit()
     return None
+
+@router.put("/{cita_id}/status")
+def actualizar_estado_cita(cita_id: int, status_update: EstadoUpdate, db: Session = Depends(database.get_db), current_user: models.User = Depends(security.get_current_user)):
+    cita = db.query(models.Appointment).filter(models.Appointment.id == cita_id).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada")
+    
+    cita.estado = status_update.estado
+    db.commit()
+    return {"mensaje": f"Estado actualizado a {status_update.estado}"}

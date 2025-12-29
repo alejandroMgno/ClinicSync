@@ -166,3 +166,22 @@ class PaymentPlanResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+# --- CITAS ---
+class AppointmentBase(BaseModel):
+    patient_id: int
+    doctor_id: int
+    fecha_hora: datetime
+    motivo: str
+    duracion_minutos: Optional[int] = 60 # <--- CAMPO CLAVE
+
+class AppointmentCreate(AppointmentBase):
+    pass
+
+class AppointmentResponse(AppointmentBase):
+    id: int
+    estado: str
+    tenant_id: int
+    
+    class Config:
+        from_attributes = True

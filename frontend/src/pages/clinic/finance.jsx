@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-// import client from '../../api/axios'; // ⚠️ DESCOMENTA ESTA LÍNEA EN TU PROYECTO
+import client from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
     CurrencyDollarIcon, QueueListIcon, PlusIcon,
@@ -9,54 +9,54 @@ import {
     ArrowTrendingUpIcon, ArrowTrendingDownIcon, TrophyIcon
 } from '@heroicons/react/24/solid';
 
-// --- CLIENTE SIMULADO ---
-const mockPendientes = [
-    { id: 101, patient_name: 'Juan Pérez', monto_total: 1500.00, concepto: 'Limpieza Dental', telefono: '5215551234567' },
-    { id: 102, patient_name: 'María Gómez', monto_total: 850.50, concepto: 'Consulta General', telefono: '5215559876543' },
-];
+// // --- CLIENTE SIMULADO ---
+// const mockPendientes = [
+//     { id: 101, patient_name: 'Juan Pérez', monto_total: 1500.00, concepto: 'Limpieza Dental', telefono: '5215551234567' },
+//     { id: 102, patient_name: 'María Gómez', monto_total: 850.50, concepto: 'Consulta General', telefono: '5215559876543' },
+// ];
 
-const mockSalesData = [
-    { id: 1, fecha: new Date().toISOString(), paciente: 'Ana López', concepto: 'Extracción', metodo_pago: 'efectivo', monto: 1200, telefono: '5215551112222', tipo: 'ingreso' },
-    { id: 2, fecha: new Date().toISOString(), paciente: 'Carlos Ruiz', concepto: 'Blanqueamiento', metodo_pago: 'tarjeta', monto: 2500, telefono: '5215553334444', tipo: 'ingreso' },
-    { id: 3, fecha: new Date().toISOString(), paciente: 'Office Depot', concepto: 'Hojas y Tinta', metodo_pago: 'efectivo', monto: -450, tipo: 'gasto' },
-];
+// const mockSalesData = [
+//     { id: 1, fecha: new Date().toISOString(), paciente: 'Ana López', concepto: 'Extracción', metodo_pago: 'efectivo', monto: 1200, telefono: '5215551112222', tipo: 'ingreso' },
+//     { id: 2, fecha: new Date().toISOString(), paciente: 'Carlos Ruiz', concepto: 'Blanqueamiento', metodo_pago: 'tarjeta', monto: 2500, telefono: '5215553334444', tipo: 'ingreso' },
+//     { id: 3, fecha: new Date().toISOString(), paciente: 'Office Depot', concepto: 'Hojas y Tinta', metodo_pago: 'efectivo', monto: -450, tipo: 'gasto' },
+// ];
 
-const client = {
-    get: (url) => new Promise((resolve) => {
-        setTimeout(() => {
-            if (url.includes('pendientes')) resolve({ data: [...mockPendientes] });
-            else if (url.includes('catalogo')) resolve({ data: [] });
-            else if (url.includes('reporte-ventas')) resolve({ data: [...mockSalesData] });
-            else if (url.includes('cortes')) resolve({ data: [] });
-            else resolve({ data: [] });
-        }, 500);
-    }),
-    post: (url, data) => new Promise((resolve) => {
-        setTimeout(() => {
-            if (url.includes('cobrar')) {
-                const idx = mockPendientes.findIndex(p => p.id === data.budget_id);
-                if (idx !== -1) mockPendientes.splice(idx, 1);
-                resolve({ data: { success: true } });
-            } else if (url.includes('gasto')) {
-                mockSalesData.push({ ...data, id: Date.now(), tipo: 'gasto', monto: -Math.abs(data.monto) });
-                resolve({ data: { success: true } });
-            } else if (url.includes('corte')) {
-                resolve({
-                    data: {
-                        estado: 'Corte Correcto',
-                        monto_sistema: data.monto_sistema, // Usamos el calculado en el frontend para la demo
-                        monto_real: data.monto_final_real,
-                        diferencia: data.monto_final_real - data.monto_sistema
-                    }
-                });
-            } else {
-                resolve({ data: { ...data, id: Date.now() } });
-            }
-        }, 500);
-    }),
-    put: () => Promise.resolve({}),
-    delete: () => Promise.resolve({})
-};
+// const client = {
+//     get: (url) => new Promise((resolve) => {
+//         setTimeout(() => {
+//             if (url.includes('pendientes')) resolve({ data: [...mockPendientes] });
+//             else if (url.includes('catalogo')) resolve({ data: [] });
+//             else if (url.includes('reporte-ventas')) resolve({ data: [...mockSalesData] });
+//             else if (url.includes('cortes')) resolve({ data: [] });
+//             else resolve({ data: [] });
+//         }, 500);
+//     }),
+//     post: (url, data) => new Promise((resolve) => {
+//         setTimeout(() => {
+//             if (url.includes('cobrar')) {
+//                 const idx = mockPendientes.findIndex(p => p.id === data.budget_id);
+//                 if (idx !== -1) mockPendientes.splice(idx, 1);
+//                 resolve({ data: { success: true } });
+//             } else if (url.includes('gasto')) {
+//                 mockSalesData.push({ ...data, id: Date.now(), tipo: 'gasto', monto: -Math.abs(data.monto) });
+//                 resolve({ data: { success: true } });
+//             } else if (url.includes('corte')) {
+//                 resolve({
+//                     data: {
+//                         estado: 'Corte Correcto',
+//                         monto_sistema: data.monto_sistema, // Usamos el calculado en el frontend para la demo
+//                         monto_real: data.monto_final_real,
+//                         diferencia: data.monto_final_real - data.monto_sistema
+//                     }
+//                 });
+//             } else {
+//                 resolve({ data: { ...data, id: Date.now() } });
+//             }
+//         }, 500);
+//     }),
+//     put: () => Promise.resolve({}),
+//     delete: () => Promise.resolve({})
+// };
 
 const Finance = () => {
     const [activeTab, setActiveTab] = useState('caja');
@@ -153,6 +153,40 @@ const Finance = () => {
             const res = await client.get(`/finanzas/caja/cortes?start_date=${dateRange.start}&end_date=${dateRange.end}`);
             setCortesHistory(res.data);
         } catch (error) { toast.error("Error cargando cortes"); }
+    };
+
+    const handleSaveService = async (e) => {
+        e.preventDefault();
+
+        // Validación básica
+        if (!newService.codigo || !newService.nombre || !newService.precio) {
+            toast.error("El código, nombre y precio son obligatorios");
+            return;
+        }
+
+        try {
+            // Enviamos los datos al endpoint /finanzas/catalogo que ya tienes en backend
+            await client.post('/finanzas/catalogo', {
+                ...newService,
+                precio: parseFloat(newService.precio),
+                costo: parseFloat(newService.costo || 0)
+            });
+
+            toast.success("Servicio agregado correctamente");
+
+            // Limpiamos el formulario y recargamos la lista
+            setNewService({ codigo: '', nombre: '', precio: '', costo: '', categoria: 'dental' });
+            loadCatalogo();
+
+        } catch (error) {
+            console.error(error);
+            // Si el backend responde con un error específico (ej. "Solo Admin")
+            if (error.response?.data?.detail) {
+                toast.error(error.response.data.detail);
+            } else {
+                toast.error("Error al guardar servicio");
+            }
+        }
     };
 
     // --- ACCIONES ---
@@ -313,69 +347,150 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
             </div>
 
             {/* --- PESTAÑA CAJA --- */}
-            {activeTab === 'caja' && (
+            {activeTab === 'catalogo' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-4">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                                <h3 className="font-bold text-gray-700">Cuentas por Cobrar</h3>
-                                <button onClick={() => setShowExpenseModal(true)} className="text-rose-600 text-xs font-bold border border-rose-200 bg-rose-50 px-3 py-1.5 rounded-lg hover:bg-rose-100 flex items-center">
-                                    <ArrowTrendingDownIcon className="w-4 h-4 mr-1" /> Registrar Salida/Gasto
-                                </button>
+                    {/* COLUMNA IZQUIERDA: FORMULARIO */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
+                        <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                            <PlusIcon className="w-5 h-5 mr-2 text-blue-600" /> Nuevo Servicio
+                        </h3>
+
+                        <form onSubmit={handleSaveService} className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Código Interno</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-colors"
+                                    value={newService.codigo}
+                                    onChange={e => setNewService({ ...newService, codigo: e.target.value })}
+                                    placeholder="Ej. EXT-001"
+                                />
                             </div>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-sm">
-                                    <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
-                                        <tr><th className="px-6 py-3 text-left">Folio</th><th className="px-6 py-3 text-left">Paciente</th><th className="px-6 py-3 text-right">Total</th><th className="px-6 py-3 text-center">Acción</th></tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {pendientes.length === 0 ? <tr><td colSpan="4" className="p-8 text-center text-gray-400">No hay cobros pendientes</td></tr> :
-                                            pendientes.map(p => (
-                                                <tr key={p.id} className="hover:bg-blue-50/50 transition-colors">
-                                                    <td className="px-6 py-4 text-sm text-gray-600 font-mono">#{p.id}</td>
-                                                    <td className="px-6 py-4 text-sm font-bold text-gray-800">{p.patient_name}</td>
-                                                    <td className="px-6 py-4 text-right text-sm font-bold text-emerald-600">${p.monto_total.toFixed(2)}</td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <button onClick={() => setSelectedBudget(p)} className="bg-white border border-gray-200 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-50 hover:border-blue-200 shadow-sm transition-all">Cobrar</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Nombre del Servicio</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-colors"
+                                    value={newService.nombre}
+                                    onChange={e => setNewService({ ...newService, nombre: e.target.value })}
+                                    placeholder="Ej. Extracción Simple"
+                                />
                             </div>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 h-fit">
-                        <h3 className="font-bold text-gray-800 mb-4 text-lg">Procesar Pago</h3>
-                        {selectedBudget ? (
-                            <div className="space-y-6">
-                                <div className="bg-blue-50 p-6 rounded-2xl text-center border border-blue-100">
-                                    <p className="text-xs font-bold uppercase tracking-wider text-blue-500 mb-1">Total a Pagar</p>
-                                    <p className="text-4xl font-extrabold text-blue-900">${selectedBudget.monto_total.toFixed(2)}</p>
-                                    <p className="text-sm text-blue-600 mt-2 font-medium bg-blue-100/50 inline-block px-3 py-1 rounded-full">{selectedBudget.patient_name}</p>
-                                </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Método de Pago</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button onClick={() => setPaymentMethod('efectivo')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === 'efectivo' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-                                            <BanknotesIcon className="w-6 h-6" /><span className="text-xs font-bold">Efectivo</span>
-                                        </button>
-                                        <button onClick={() => setPaymentMethod('tarjeta')} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${paymentMethod === 'tarjeta' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-                                            <CreditCardIcon className="w-6 h-6" /><span className="text-xs font-bold">Tarjeta</span>
-                                        </button>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Precio Público</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                                        <input
+                                            type="number"
+                                            className="w-full pl-6 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-700"
+                                            value={newService.precio}
+                                            onChange={e => setNewService({ ...newService, precio: e.target.value })}
+                                            placeholder="0.00"
+                                        />
                                     </div>
                                 </div>
-                                <div className="pt-2">
-                                    <button onClick={handleCobrar} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform active:scale-95">Confirmar Ingreso</button>
-                                    <button onClick={() => setSelectedBudget(null)} className="w-full text-gray-400 text-xs hover:text-gray-600 font-medium mt-3 py-2">Cancelar operación</button>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Costo (Opcional)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-gray-400">$</span>
+                                        <input
+                                            type="number"
+                                            className="w-full pl-6 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={newService.costo}
+                                            onChange={e => setNewService({ ...newService, costo: e.target.value })}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="text-center py-12 px-4 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                <CurrencyDollarIcon className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                                <p className="text-gray-400 text-sm">Selecciona un folio de la lista para iniciar el cobro.</p>
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Categoría</label>
+                                <select
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                    value={newService.categoria}
+                                    onChange={e => setNewService({ ...newService, categoria: e.target.value })}
+                                >
+                                    <option value="dental">Dental</option>
+                                    <option value="medicina">Medicina General</option>
+                                    <option value="ortodoncia">Ortodoncia</option>
+                                    <option value="cirugia">Cirugía</option>
+                                    <option value="rayos-x">Rayos X / Imagen</option>
+                                    <option value="laboratorio">Laboratorio</option>
+                                    <option value="otro">Otro</option>
+                                </select>
                             </div>
-                        )}
+
+                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 active:scale-95 flex justify-center items-center">
+                                <PlusIcon className="w-5 h-5 mr-2" />
+                                Guardar Servicio
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* COLUMNA DERECHA: TABLA DE SERVICIOS */}
+                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
+                        <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-700 flex items-center">
+                                <QueueListIcon className="w-5 h-5 mr-2 text-gray-400" />
+                                Catálogo de Precios
+                            </h3>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold border border-blue-200">
+                                {servicios.length} Servicios Activos
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto flex-1 overflow-y-auto">
+                            <table className="min-w-full text-sm">
+                                <thead className="bg-white text-gray-500 text-xs uppercase font-semibold sticky top-0 shadow-sm z-10">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left bg-gray-50/50 backdrop-blur-sm">Código</th>
+                                        <th className="px-6 py-4 text-left bg-gray-50/50 backdrop-blur-sm">Servicio</th>
+                                        <th className="px-6 py-4 text-center bg-gray-50/50 backdrop-blur-sm">Categoría</th>
+                                        <th className="px-6 py-4 text-right bg-gray-50/50 backdrop-blur-sm">Precio</th>
+                                        <th className="px-6 py-4 text-center bg-gray-50/50 backdrop-blur-sm">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {servicios.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="p-12 text-center text-gray-400 flex flex-col items-center justify-center">
+                                                <QueueListIcon className="w-12 h-12 mb-2 text-gray-200" />
+                                                <p>No hay servicios registrados.</p>
+                                                <p className="text-xs mt-1">Usa el formulario de la izquierda para agregar uno.</p>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        servicios.map((s) => (
+                                            <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
+                                                <td className="px-6 py-4 text-gray-500 font-mono text-xs">{s.codigo}</td>
+                                                <td className="px-6 py-4 font-bold text-gray-800">{s.nombre}</td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-md text-xs font-medium capitalize border border-gray-200">
+                                                        {s.categoria}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
+                                                        ${s.precio.toFixed(2)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="flex justify-center items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button className="p-1.5 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg transition-colors" title="Eliminar (No implementado en demo)">
+                                                            <XMarkIcon className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}

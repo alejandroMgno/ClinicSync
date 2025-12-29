@@ -17,6 +17,9 @@ class BudgetPendingResponse(BaseModel):
     patient_id: int
     patient_name: str
 
+    class Config:
+        orm_mode = True
+
 class BudgetItemFullResponse(BaseModel):
     service_id: int
     cantidad: int
@@ -434,3 +437,12 @@ def pagar_mensualidad(
     
     db.commit()
     return {"mensaje": "Pago registrado correctamente", "saldo_restante": plan.saldo_pendiente, "estado_plan": plan.estado}
+
+@router.get("/presupuestos/paciente/{patient_id}", response_model=List[schemas.BudgetResponse])
+def obtener_presupuestos_paciente(patient_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(security.get_current_user)):
+    """Obtiene todos los presupuestos de un paciente específico."""
+    presupuestos = db.query(models.Budget).filter(
+        models.Budget.patient_id == patient_id,
+        models.Budget.deleted_at == None
+    ).all()
+    return presupuestos
