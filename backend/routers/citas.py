@@ -90,11 +90,20 @@ def cancelar_cita(
     return None
 
 @router.put("/{cita_id}/status")
-def actualizar_estado_cita(cita_id: int, status_update: EstadoUpdate, db: Session = Depends(database.get_db), current_user: models.User = Depends(security.get_current_user)):
-    cita = db.query(models.Appointment).filter(models.Appointment.id == cita_id).first()
+def actualizar_estado_cita(
+    cita_id: int,
+    obj: EstadoUpdate,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    cita = db.query(models.Appointment).filter(
+        models.Appointment.id == cita_id,
+        models.Appointment.tenant_id == current_user.tenant_id
+    ).first()
+    
     if not cita:
         raise HTTPException(status_code=404, detail="Cita no encontrada")
     
-    cita.estado = status_update.estado
+    cita.estado = obj.estado
     db.commit()
-    return {"mensaje": f"Estado actualizado a {status_update.estado}"}
+    return {"status": "updated", "nuevo_estado": cita.estado}

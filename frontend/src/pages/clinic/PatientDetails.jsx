@@ -67,7 +67,7 @@ const PatientDetails = () => {
 
             // 2. Cargar Citas (CORREGIDO)
             try {
-                const resAppts = await client.get(`/paciente/${id}/citas`);
+                const resAppts = await client.get(`/citas/paciente/${id}`);
                 setAppointments(resAppts.data);
             } catch (e) { console.log("Sin citas", e); }
 
