@@ -446,3 +446,50 @@ def obtener_presupuestos_paciente(patient_id: int, db: Session = Depends(databas
         models.Budget.deleted_at == None
     ).all()
     return presupuestos
+
+
+#pagos paciente
+@router.get("/pagos/paciente/{patient_id}")
+def obtener_historial_pagos_paciente(
+    patient_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(security.get_current_user)
+):
+    # 1. Traemos los pagos (ingresos) del paciente, incluyendo las relaciones para saber qué pagó
+    pagos = db.query(models.Transaction).options(
+        joinedload(models.Transaction.presupuesto).joinedload(models.Budget.items).joinedload(models.BudgetItem.servicio)
+    ).filter(
+        models.Transaction.patient_id == patient_id,
+        models.Transaction.tenant_id == current_user.tenant_id,
+        models.Transaction.tipo == "ingreso"
+    ).order_by(models.Transaction.created_at.desc()).all()
+
+    resultado = []
+    
+    # 2. Usamos TU lógica existente para generar el concepto detallado
+    for p in pagos:
+        concepto_detalle = "Abono a Cuenta"
+        
+        # Si el pago viene de un presupuesto (tiene items)
+        if p.presupuesto and p.presupuesto.items:
+            items_nombres = []
+            for item in p.presupuesto.items:
+                nombre_srv = item.servicio.nombre if item.servicio else "Servicio eliminado"
+                items_nombres.append(nombre_srv)
+            # Unimos los nombres: "Limpieza, Resina, Extracción"
+            concepto_detalle = ", ".join(items_nombres)
+            
+        # Si el pago viene de una cita directa
+        elif p.appointment_id:
+            concepto_detalle = f"Consulta / Visita #{p.appointment_id}"
+
+        resultado.append({
+            "id": p.id,
+            "fecha": p.created_at,
+            "monto": p.monto,
+            "metodo_pago": p.metodo_pago,
+            "concepto": concepto_detalle, # ¡Aquí va el detalle real!
+            "estado": p.estado
+        })
+
+    return resultado

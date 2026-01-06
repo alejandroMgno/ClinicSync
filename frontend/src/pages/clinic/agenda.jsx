@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import {
     PlusIcon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon,
     MagnifyingGlassIcon, UserPlusIcon, CalendarDaysIcon,
-    XCircleIcon, CheckCircleIcon, ClockIcon, PlayIcon
+    CheckCircleIcon, PlayIcon
 } from '@heroicons/react/24/solid';
 
 const Agenda = () => {
@@ -16,8 +16,8 @@ const Agenda = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Modales
-    const [showModal, setShowModal] = useState(false); // Modal Crear
-    const [selectedEvent, setSelectedEvent] = useState(null); // Modal Gestionar (NUEVO)
+    const [showModal, setShowModal] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
 
     const [viewMode, setViewMode] = useState('week');
     const [newAppointment, setNewAppointment] = useState({
@@ -33,7 +33,6 @@ const Agenda = () => {
         loadAgendaData();
     }, [currentDate, viewMode]);
 
-    // Buscador de pacientes (Tu código original)
     useEffect(() => {
         const timer = setTimeout(() => {
             if (searchPatientTerm.length > 1 && !selectedPatientName) {
@@ -48,7 +47,6 @@ const Agenda = () => {
     const loadAgendaData = async () => {
         try {
             setLoading(true);
-            // 1. Cargar Doctores
             let realDoctors = [];
             try {
                 const resDocs = await client.get('/usuarios/');
@@ -59,7 +57,6 @@ const Agenda = () => {
                 setDoctors(realDoctors);
             }
 
-            // 2. Cargar Citas
             const days = getWeekDays();
             const startDate = days[0].toISOString().split('T')[0];
             const endDate = days[6].toISOString().split('T')[0];
@@ -67,7 +64,6 @@ const Agenda = () => {
             let res;
             try { res = await client.get(`/clinica/agenda?start_date=${startDate}&end_date=${endDate}`); } catch { res = { data: [] }; }
 
-            // Procesamiento de fechas (Tu código original)
             const processedApps = res.data.map(appt => {
                 const parts = appt.fecha_hora.split(/[-T:]/);
                 const localDate = new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4]);
@@ -90,13 +86,20 @@ const Agenda = () => {
         } catch (error) { toast.error("Error sincronizando agenda"); } finally { setLoading(false); }
     };
 
-    // --- NUEVA FUNCIÓN: ACTUALIZAR ESTADO (INICIAR CITA) ---
     const updateStatus = async (id, nuevoEstado) => {
         try {
             await client.put(`/citas/${id}/status`, { estado: nuevoEstado });
-            toast.success(`Estado actualizado: ${nuevoEstado}`);
-            loadAgendaData(); // Recargar grid
-            setSelectedEvent(null); // Cerrar modal
+            toast.success(`Estado: ${nuevoEstado}`);
+
+            // --- CAMBIO CLAVE: SI INICIAMOS, VAMOS A LA CONSULTA ---
+            if (nuevoEstado === 'en_proceso' || nuevoEstado === 'En proceso') {
+                navigate(`/dashboard/consulta/${id}`);
+            } else {
+                loadAgendaData();
+                setSelectedEvent(null);
+            }
+            // -------------------------------------------------------
+
         } catch (error) {
             console.error(error);
             toast.error("Error al actualizar estado");
@@ -137,7 +140,6 @@ const Agenda = () => {
         setSearchPatientTerm(''); setSelectedPatientName(''); setSearchResults([]); setIsCreatingPatient(false);
     };
 
-    // --- CALCULOS DE FECHAS Y GRID (Tu código original intacto) ---
     const startOfWeek = () => {
         const date = new Date(currentDate);
         const day = date.getDay();
@@ -172,17 +174,14 @@ const Agenda = () => {
     };
 
     const getStatusStyle = (status) => {
-        switch (status) {
-            case 'Finalizada': return 'bg-gray-200 text-gray-600 border-l-4 border-gray-500';
-            case 'en_proceso': // Ajustado para coincidir con backend
-            case 'En proceso': return 'bg-green-100 text-green-800 border-l-4 border-green-600 shadow-md z-20';
-            case 'Cancelada':
-            case 'No asistió': return 'bg-red-100 text-red-800 border-l-4 border-red-500 opacity-70 line-through';
-            default: return 'bg-blue-100 text-blue-800 border-l-4 border-blue-500';
-        }
+        // Normalizamos a minúsculas para comparar fácil
+        const st = status ? status.toLowerCase() : '';
+        if (st === 'finalizada') return 'bg-gray-200 text-gray-600 border-l-4 border-gray-500';
+        if (st.includes('proceso')) return 'bg-green-100 text-green-800 border-l-4 border-green-600 shadow-md z-20';
+        if (st === 'cancelada' || st.includes('no')) return 'bg-red-100 text-red-800 border-l-4 border-red-500 opacity-70 line-through';
+        return 'bg-blue-100 text-blue-800 border-l-4 border-blue-500';
     };
 
-    // --- ALGORITMO DE LAYOUT (Tu código original intacto) ---
     const organizeEvents = (events) => {
         if (!events || events.length === 0) return [];
         const sortedEvents = [...events].sort((a, b) => a.startMin - b.startMin);
@@ -209,7 +208,7 @@ const Agenda = () => {
 
     return (
         <div className="h-full flex flex-col space-y-4 max-h-[calc(100vh-4rem)]">
-            {/* Header (Tu código original) */}
+            {/* Header */}
             <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200 shrink-0">
                 <div className="flex items-center gap-4">
                     <CalendarDaysIcon className="w-8 h-8 text-indigo-600" />
@@ -273,7 +272,6 @@ const Agenda = () => {
                                         return (
                                             <div
                                                 key={apt.id}
-                                                // AQUÍ ESTÁ EL CAMBIO IMPORTANTE: ABRIR MODAL EN LUGAR DE NAVEGAR
                                                 onClick={(e) => { e.stopPropagation(); setSelectedEvent(apt); }}
                                                 className={`absolute rounded px-2 py-1 text-[10px] shadow-sm cursor-pointer hover:brightness-95 border-l-2 overflow-hidden transition-all ${getStatusStyle(apt.estado)} group`}
                                                 style={{ top: `${top}px`, height: `${height}px`, width: apt.styleWidth, left: apt.styleLeft }}
@@ -290,7 +288,7 @@ const Agenda = () => {
                 </div>
             </div>
 
-            {/* MODAL CREAR CITA (Tu código original) */}
+            {/* MODAL CREAR CITA */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
@@ -299,7 +297,6 @@ const Agenda = () => {
                             <button onClick={() => setShowModal(false)}><XMarkIcon className="w-6 h-6" /></button>
                         </div>
                         <form onSubmit={handleCreateAppointment} className="p-6 space-y-4">
-                            {/* ... (Tu formulario original de creación) ... */}
                             <div className="relative z-20">
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Paciente</label>
                                 {selectedPatientName ? (
@@ -332,7 +329,7 @@ const Agenda = () => {
                 </div>
             )}
 
-            {/* --- NUEVO MODAL: GESTIONAR CITA --- */}
+            {/* --- MODAL: GESTIONAR CITA (CORREGIDO PARA TODOS LOS ESTADOS) --- */}
             {selectedEvent && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-up">
@@ -354,23 +351,23 @@ const Agenda = () => {
                             </div>
 
                             <div className="grid grid-cols-1 gap-2 pt-2">
-                                {/* BOTÓN INICIAR CITA */}
-                                {selectedEvent.estado === 'programada' && (
+                                {/* BOTÓN INICIAR CITA (Soporta múltiples estados) */}
+                                {['programada', 'Pendiente', 'Agendada'].includes(selectedEvent.estado) && (
                                     <button
                                         onClick={() => updateStatus(selectedEvent.id, 'en_proceso')}
-                                        className="btn-primary w-full flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 py-3"
+                                        className="btn-primary w-full flex justify-center items-center gap-2 bg-green-600 hover:bg-green-700 py-3 text-white font-bold rounded-lg"
                                     >
                                         <PlayIcon className="w-5 h-5" /> Iniciar Cita Ahora
                                     </button>
                                 )}
 
-                                {/* BOTÓN FINALIZAR CITA */}
-                                {selectedEvent.estado === 'en_proceso' && (
+                                {/* BOTÓN FINALIZAR CITA (Soporta múltiples estados) */}
+                                {['en_proceso', 'En proceso', 'En Curso'].includes(selectedEvent.estado) && (
                                     <button
-                                        onClick={() => updateStatus(selectedEvent.id, 'Finalizada')}
-                                        className="btn-primary w-full flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 py-3"
+                                        onClick={() => navigate(`/dashboard/consulta/${selectedEvent.id}`)}
+                                        className="btn-primary w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 py-3 text-white font-bold rounded-lg"
                                     >
-                                        <CheckCircleIcon className="w-5 h-5" /> Finalizar Consulta
+                                        <PlayIcon className="w-5 h-5" /> Continuar Consulta
                                     </button>
                                 )}
 
@@ -381,12 +378,14 @@ const Agenda = () => {
                                     >
                                         Ver Expediente
                                     </button>
-                                    <button
-                                        onClick={() => updateStatus(selectedEvent.id, 'Cancelada')}
-                                        className="flex-1 bg-white border border-red-200 text-red-600 py-2 rounded-lg text-sm font-bold hover:bg-red-50"
-                                    >
-                                        Cancelar
-                                    </button>
+                                    {selectedEvent.estado !== 'Finalizada' && selectedEvent.estado !== 'Cancelada' && (
+                                        <button
+                                            onClick={() => updateStatus(selectedEvent.id, 'Cancelada')}
+                                            className="flex-1 bg-white border border-red-200 text-red-600 py-2 rounded-lg text-sm font-bold hover:bg-red-50"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

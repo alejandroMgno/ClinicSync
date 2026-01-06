@@ -1,73 +1,120 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
-const Odontogram = ({ onSelectionChange, treatments = [] }) => {
-    // Representación de los dientes
-    const initialTeeth = [
-        { id: 18, label: '18' }, { id: 17, label: '17' }, { id: 16, label: '16' }, { id: 15, label: '15' }, { id: 14, label: '14' }, { id: 13, label: '13' }, { id: 12, label: '12' }, { id: 11, label: '11' },
-        { id: 21, label: '21' }, { id: 22, label: '22' }, { id: 23, label: '23' }, { id: 24, label: '24' }, { id: 25, label: '25' }, { id: 26, label: '26' }, { id: 27, label: '27' }, { id: 28, label: '28' },
-        { id: 48, label: '48' }, { id: 47, label: '47' }, { id: 46, label: '46' }, { id: 45, label: '45' }, { id: 44, label: '44' }, { id: 43, label: '43' }, { id: 42, label: '42' }, { id: 41, label: '41' },
-        { id: 31, label: '31' }, { id: 32, label: '32' }, { id: 33, label: '33' }, { id: 34, label: '34' }, { id: 35, label: '35' }, { id: 36, label: '36' }, { id: 37, label: '37' }, { id: 38, label: '38' },
-    ];
+const Odontograma = ({ variant = 'full' }) => {
+    // Estado de los dientes
+    const [teethState, setTeethState] = useState({});
 
-    const [selectedTeeth, setSelectedTeeth] = useState([]);
+    // Configuración de tamaños según la variante
+    const isMini = variant === 'mini';
 
-    // Manejador de Clics
+    // Clases dinámicas basadas en si es mini o full
+    const sizeClasses = isMini
+        ? 'w-6 h-6 text-[10px] border'      // Mini: 24px, texto muy pequeño
+        : 'w-10 h-10 text-sm border-2';     // Full: 40px, texto normal
+
+    const gapClasses = isMini
+        ? 'gap-0.5'                         // Mini: Espacio mínimo entre dientes
+        : 'gap-2';                          // Full: Espacio cómodo
+
+    const containerGap = isMini ? 'gap-2' : 'gap-8';
+    const dividerHeight = isMini ? 'h-8' : 'h-12';
+
+    // Cuadrantes (FDI)
+    const quadrants = {
+        upperRight: [18, 17, 16, 15, 14, 13, 12, 11],
+        upperLeft: [21, 22, 23, 24, 25, 26, 27, 28],
+        lowerRight: [48, 47, 46, 45, 44, 43, 42, 41],
+        lowerLeft: [31, 32, 33, 34, 35, 36, 37, 38],
+    };
+
     const handleToothClick = (id) => {
-        let newSelection;
-        // Si ya estaba seleccionado, lo quitamos
-        if (selectedTeeth.includes(id)) {
-            newSelection = selectedTeeth.filter(t => t !== id);
-        } else {
-            // Si no, lo agregamos
-            newSelection = [...selectedTeeth, id];
-        }
+        const states = ['sano', 'seleccionado', 'presupuesto', 'realizado'];
+        const current = teethState[id] || 'sano';
+        const nextIndex = (states.indexOf(current) + 1) % states.length;
+        setTeethState({ ...teethState, [id]: states[nextIndex] });
+    };
 
-        setSelectedTeeth(newSelection);
-
-        // --- AQUÍ ESTÁ LA CLAVE ---
-        // Avisamos al padre (Consultation.jsx) que la selección cambió
-        if (onSelectionChange) {
-            onSelectionChange(newSelection);
+    const getToothColor = (id) => {
+        const state = teethState[id] || 'sano';
+        switch (state) {
+            case 'seleccionado': return 'bg-green-500 text-white border-green-600';
+            case 'presupuesto': return 'bg-yellow-400 text-white border-yellow-500';
+            case 'realizado': return 'bg-blue-600 text-white border-blue-700';
+            default: return 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50';
         }
     };
 
-    // Estilos dinámicos
-    const getToothStyle = (id) => {
-        // 1. Selección actual (Borde amarillo)
-        if (selectedTeeth.includes(id)) {
-            return 'bg-yellow-100 border-2 border-yellow-500 text-yellow-700 shadow-md scale-110 z-10';
-        }
-
-        // 2. Tratamientos ya aplicados (Azul, Naranja, Rojo)
-        const treatment = treatments.find(t => t.dientes.includes(id));
-        if (treatment) {
-            if (treatment.estado === 'realizado') return 'bg-blue-500 text-white border-blue-700';
-            if (treatment.estado === 'presupuesto') return 'bg-orange-100 text-orange-600 border-orange-300';
-            if (treatment.estado === 'caries') return 'bg-red-500 text-white border-red-700';
-        }
-
-        // 3. Default
-        return 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50';
-    };
+    // Sub-componente Diente
+    const Tooth = ({ id }) => (
+        <button
+            onClick={() => handleToothClick(id)}
+            className={`rounded-full flex items-center justify-center font-bold transition-all shadow-sm ${sizeClasses} ${getToothColor(id)}`}
+            title={`Diente ${id}`}
+        >
+            {id}
+        </button>
+    );
 
     return (
-        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 select-none">
-            <div className="flex justify-center gap-1 mb-2">
-                {initialTeeth.slice(0, 16).map(t => (
-                    <div key={t.id} onClick={() => handleToothClick(t.id)} className={`w-8 h-10 flex items-center justify-center border rounded cursor-pointer transition-all text-xs font-bold ${getToothStyle(t.id)}`}>
-                        {t.label}
+        <div className="w-full h-full flex flex-col items-center justify-center">
+            {/* Título opcional si no viene del padre */}
+            {/* <h3 className="text-gray-700 font-bold mb-4 text-sm">Odontograma</h3> */}
+
+            <div className={`flex flex-col items-center ${containerGap}`}>
+
+                {/* --- ARCADA SUPERIOR --- */}
+                <div className="flex items-center gap-2 md:gap-4">
+                    {/* Cuadrante 1 */}
+                    <div className={`flex ${gapClasses}`}>
+                        {quadrants.upperRight.map(id => <Tooth key={id} id={id} />)}
                     </div>
-                ))}
-            </div>
-            <div className="flex justify-center gap-1">
-                {initialTeeth.slice(16, 32).map(t => (
-                    <div key={t.id} onClick={() => handleToothClick(t.id)} className={`w-8 h-10 flex items-center justify-center border rounded cursor-pointer transition-all text-xs font-bold ${getToothStyle(t.id)}`}>
-                        {t.label}
+
+                    {/* Línea media */}
+                    <div className={`w-px bg-gray-300 ${dividerHeight}`}></div>
+
+                    {/* Cuadrante 2 */}
+                    <div className={`flex ${gapClasses}`}>
+                        {quadrants.upperLeft.map(id => <Tooth key={id} id={id} />)}
                     </div>
-                ))}
+                </div>
+
+                {/* --- ARCADA INFERIOR --- */}
+                <div className="flex items-center gap-2 md:gap-4">
+                    {/* Cuadrante 4 */}
+                    <div className={`flex ${gapClasses}`}>
+                        {quadrants.lowerRight.map(id => <Tooth key={id} id={id} />)}
+                    </div>
+
+                    {/* Línea media */}
+                    <div className={`w-px bg-gray-300 ${dividerHeight}`}></div>
+
+                    {/* Cuadrante 3 */}
+                    <div className={`flex ${gapClasses}`}>
+                        {quadrants.lowerLeft.map(id => <Tooth key={id} id={id} />)}
+                    </div>
+                </div>
             </div>
+
+            {/* LEYENDA (Solo mostrar si NO es modo mini, o hacerla más pequeña) */}
+            {!isMini && (
+                <div className="mt-6 flex flex-wrap justify-center gap-4 text-xs text-gray-600">
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full border bg-white"></div> Sano</div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-green-500"></div> Selecc.</div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-yellow-400"></div> Presup.</div>
+                    <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-600"></div> Realiz.</div>
+                </div>
+            )}
+
+            {/* Leyenda Mini (Opcional) */}
+            {isMini && (
+                <div className="mt-4 flex justify-center gap-3 text-[10px] text-gray-500">
+                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Sel</span>
+                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-400"></div> Pre</span>
+                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-600"></div> Rea</span>
+                </div>
+            )}
         </div>
     );
 };
 
-export default Odontogram;
+export default Odontograma;

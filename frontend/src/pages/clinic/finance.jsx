@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import client from '../../api/axios';
+import client from '../../api/axios'; // Asegúrate que esta ruta sea correcta en tu proyecto
 import toast from 'react-hot-toast';
 import {
     CurrencyDollarIcon, QueueListIcon, PlusIcon,
@@ -9,63 +9,15 @@ import {
     ArrowTrendingUpIcon, ArrowTrendingDownIcon, TrophyIcon
 } from '@heroicons/react/24/solid';
 
-// // --- CLIENTE SIMULADO ---
-// const mockPendientes = [
-//     { id: 101, patient_name: 'Juan Pérez', monto_total: 1500.00, concepto: 'Limpieza Dental', telefono: '5215551234567' },
-//     { id: 102, patient_name: 'María Gómez', monto_total: 850.50, concepto: 'Consulta General', telefono: '5215559876543' },
-// ];
-
-// const mockSalesData = [
-//     { id: 1, fecha: new Date().toISOString(), paciente: 'Ana López', concepto: 'Extracción', metodo_pago: 'efectivo', monto: 1200, telefono: '5215551112222', tipo: 'ingreso' },
-//     { id: 2, fecha: new Date().toISOString(), paciente: 'Carlos Ruiz', concepto: 'Blanqueamiento', metodo_pago: 'tarjeta', monto: 2500, telefono: '5215553334444', tipo: 'ingreso' },
-//     { id: 3, fecha: new Date().toISOString(), paciente: 'Office Depot', concepto: 'Hojas y Tinta', metodo_pago: 'efectivo', monto: -450, tipo: 'gasto' },
-// ];
-
-// const client = {
-//     get: (url) => new Promise((resolve) => {
-//         setTimeout(() => {
-//             if (url.includes('pendientes')) resolve({ data: [...mockPendientes] });
-//             else if (url.includes('catalogo')) resolve({ data: [] });
-//             else if (url.includes('reporte-ventas')) resolve({ data: [...mockSalesData] });
-//             else if (url.includes('cortes')) resolve({ data: [] });
-//             else resolve({ data: [] });
-//         }, 500);
-//     }),
-//     post: (url, data) => new Promise((resolve) => {
-//         setTimeout(() => {
-//             if (url.includes('cobrar')) {
-//                 const idx = mockPendientes.findIndex(p => p.id === data.budget_id);
-//                 if (idx !== -1) mockPendientes.splice(idx, 1);
-//                 resolve({ data: { success: true } });
-//             } else if (url.includes('gasto')) {
-//                 mockSalesData.push({ ...data, id: Date.now(), tipo: 'gasto', monto: -Math.abs(data.monto) });
-//                 resolve({ data: { success: true } });
-//             } else if (url.includes('corte')) {
-//                 resolve({
-//                     data: {
-//                         estado: 'Corte Correcto',
-//                         monto_sistema: data.monto_sistema, // Usamos el calculado en el frontend para la demo
-//                         monto_real: data.monto_final_real,
-//                         diferencia: data.monto_final_real - data.monto_sistema
-//                     }
-//                 });
-//             } else {
-//                 resolve({ data: { ...data, id: Date.now() } });
-//             }
-//         }, 500);
-//     }),
-//     put: () => Promise.resolve({}),
-//     delete: () => Promise.resolve({})
-// };
-
 const Finance = () => {
-    const [activeTab, setActiveTab] = useState('caja');
+    // --- ESTADOS PRINCIPALES ---
+    const [activeTab, setActiveTab] = useState('caja'); // 'caja', 'reportes', 'catalogo'
     const [loading, setLoading] = useState(false);
 
-    // Configuración de Metas (Podría venir de base de datos)
+    // Meta diaria (Hardcodeada o traída de configuración)
     const dailyGoal = 5000;
 
-    // --- ESTADOS DE CAJA ---
+    // --- ESTADOS DE CAJA (COBROS) ---
     const [pendientes, setPendientes] = useState([]);
     const [selectedBudget, setSelectedBudget] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('efectivo');
@@ -85,34 +37,45 @@ const Finance = () => {
     // --- ESTADOS DE REPORTES Y CORTE ---
     const today = new Date().toISOString().split('T')[0];
     const [dateRange, setDateRange] = useState({ start: today, end: today });
-    const [salesData, setSalesData] = useState([]); // Ingresos y Gastos
+    const [salesData, setSalesData] = useState([]);
     const [cortesHistory, setCortesHistory] = useState([]);
     const [reportSubTab, setReportSubTab] = useState('ventas');
-    const [summary, setSummary] = useState({ totalIngresos: 0, totalGastos: 0, balance: 0, efectivoEnCaja: 0 });
+
+    // Resumen financiero para el Header y Corte Z
+    const [summary, setSummary] = useState({
+        totalIngresos: 0,
+        totalGastos: 0,
+        balance: 0,
+        efectivoEnCaja: 0
+    });
 
     const [showCorteModal, setShowCorteModal] = useState(false);
     const [corteData, setCorteData] = useState({ inicial: 0, final: 0 });
     const [corteResult, setCorteResult] = useState(null);
 
+    // --- EFECTOS (CARGA DE DATOS) ---
     useEffect(() => {
         if (activeTab === 'caja') loadPendientes();
         if (activeTab === 'catalogo') loadCatalogo();
-        loadReportesGeneral(); // Cargamos siempre para actualizar la meta
+        loadReportesGeneral(); // Cargamos reportes siempre para mantener actualizado el Header y la Meta
     }, [activeTab, reportSubTab, dateRange]);
 
-    // --- CARGA DE DATOS ---
+    // --- FUNCIONES DE CARGA ---
     const loadPendientes = async () => {
         try {
             const res = await client.get('/finanzas/caja/pendientes');
             setPendientes(res.data);
-        } catch (error) { if (error.response?.status !== 404) console.error("Error"); }
+        } catch (error) {
+            // Ignorar 404 si es que la lista está vacía, o manejar error
+            console.log("No hay pendientes o error de conexión");
+        }
     };
 
     const loadCatalogo = async () => {
         try {
             const res = await client.get('/finanzas/catalogo');
             setServicios(res.data);
-        } catch (error) { toast.error("Error cargando precios"); }
+        } catch (error) { toast.error("Error cargando catálogo"); }
     };
 
     const loadReportesGeneral = async () => {
@@ -126,14 +89,14 @@ const Finance = () => {
             const res = await client.get(`/finanzas/reporte-ventas?start_date=${dateRange.start}&end_date=${dateRange.end}`);
             setSalesData(res.data);
 
-            // Cálculos Financieros
+            // Cálculos Financieros en Frontend (o podrías traerlos del backend)
             const ingresos = res.data.filter(i => i.tipo === 'ingreso' || !i.tipo);
             const gastos = res.data.filter(i => i.tipo === 'gasto');
 
             const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
             const totalGastos = gastos.reduce((sum, item) => sum + Math.abs(item.monto), 0);
 
-            // Cálculo específico de efectivo para el corte
+            // Cálculo específico de efectivo para sugerencia de Corte Z
             const ingresosEfectivo = ingresos.filter(i => i.metodo_pago === 'efectivo').reduce((sum, i) => sum + i.monto, 0);
             const gastosEfectivo = gastos.filter(i => i.metodo_pago === 'efectivo').reduce((sum, i) => sum + Math.abs(item.monto), 0);
 
@@ -152,44 +115,31 @@ const Finance = () => {
         try {
             const res = await client.get(`/finanzas/caja/cortes?start_date=${dateRange.start}&end_date=${dateRange.end}`);
             setCortesHistory(res.data);
-        } catch (error) { toast.error("Error cargando cortes"); }
+        } catch (error) { toast.error("Error cargando historial de cortes"); }
     };
 
+    // --- MANEJADORES DE ACCIÓN (HANDLERS) ---
+
+    // 1. Guardar nuevo servicio
     const handleSaveService = async (e) => {
         e.preventDefault();
-
-        // Validación básica
         if (!newService.codigo || !newService.nombre || !newService.precio) {
-            toast.error("El código, nombre y precio son obligatorios");
+            toast.error("Datos incompletos");
             return;
         }
-
         try {
-            // Enviamos los datos al endpoint /finanzas/catalogo que ya tienes en backend
             await client.post('/finanzas/catalogo', {
                 ...newService,
                 precio: parseFloat(newService.precio),
                 costo: parseFloat(newService.costo || 0)
             });
-
-            toast.success("Servicio agregado correctamente");
-
-            // Limpiamos el formulario y recargamos la lista
+            toast.success("Servicio agregado");
             setNewService({ codigo: '', nombre: '', precio: '', costo: '', categoria: 'dental' });
             loadCatalogo();
-
-        } catch (error) {
-            console.error(error);
-            // Si el backend responde con un error específico (ej. "Solo Admin")
-            if (error.response?.data?.detail) {
-                toast.error(error.response.data.detail);
-            } else {
-                toast.error("Error al guardar servicio");
-            }
-        }
+        } catch (error) { toast.error("Error al guardar"); }
     };
 
-    // --- ACCIONES ---
+    // 2. Cobrar un presupuesto
     const handleCobrar = async () => {
         if (!selectedBudget) return;
         try {
@@ -200,20 +150,24 @@ const Finance = () => {
             });
             toast.success(`Cobro registrado`);
 
+            // Generar datos para el ticket modal
             const ticketData = {
                 ...selectedBudget,
                 fecha: new Date().toISOString(),
                 metodo_pago: paymentMethod,
-                folio: `TK-${Date.now().toString().slice(-6)}`
+                folio: `TK-${Date.now().toString().slice(-6)}`,
+                isExpense: false
             };
             setCurrentTicket(ticketData);
             setShowTicketModal(true);
+
             setSelectedBudget(null);
-            loadPendientes();
-            loadReportesGeneral(); // Actualizar meta
-        } catch (error) { toast.error("Error al cobrar"); }
+            loadPendientes(); // Recargar lista
+            loadReportesGeneral(); // Actualizar metas del header
+        } catch (error) { toast.error("Error al procesar cobro"); }
     };
 
+    // 3. Registrar un Gasto
     const handleRegistrarGasto = async (e) => {
         e.preventDefault();
         try {
@@ -223,53 +177,41 @@ const Finance = () => {
                 metodo_pago: expenseData.metodo,
                 fecha: new Date().toISOString()
             });
-            toast.success("Salida de efectivo registrada");
+            toast.success("Gasto registrado");
             setShowExpenseModal(false);
             setExpenseData({ concepto: '', monto: '', metodo: 'efectivo' });
-            loadReportesGeneral();
+            loadReportesGeneral(); // Actualizar balance
+            if (activeTab === 'caja') loadPendientes();
         } catch (error) { toast.error("Error al registrar gasto"); }
     };
 
-    // --- TICKET Y CORTE ---
-    const handleViewTicket = (sale) => {
+    // 4. Realizar Corte Z
+    const handleRealizarCorte = async (e) => {
+        e.preventDefault();
+        try {
+            // El backend ya tiene la lógica de restar gastos, enviamos montos
+            const res = await client.post('/finanzas/caja/corte', {
+                monto_inicial: parseFloat(corteData.inicial),
+                monto_final_real: parseFloat(corteData.final)
+            });
+            setCorteResult(res.data);
+            toast.success("Corte registrado");
+        } catch (error) { toast.error("Error al realizar corte"); }
+    };
+
+    // --- UTILIDADES DE TICKET ---
+    const handleViewTicket = (item) => {
         const ticketData = {
-            patient_name: sale.paciente,
-            monto_total: Math.abs(sale.monto),
-            fecha: sale.fecha,
-            metodo_pago: sale.metodo_pago,
-            folio: `TK-${sale.id || 'HIST'}`,
-            telefono: sale.telefono,
-            concepto: sale.concepto,
-            isExpense: sale.tipo === 'gasto'
+            patient_name: item.paciente,
+            monto_total: Math.abs(item.monto),
+            fecha: item.fecha,
+            metodo_pago: item.metodo_pago,
+            folio: `REF-${new Date(item.fecha).getTime().toString().slice(-6)}`,
+            concepto: item.concepto,
+            isExpense: item.tipo === 'gasto'
         };
         setCurrentTicket(ticketData);
         setShowTicketModal(true);
-    };
-
-    const getTicketText = () => {
-        if (!currentTicket) return '';
-        const titulo = currentTicket.isExpense ? 'COMPROBANTE DE EGRESO' : 'RECIBO DE PAGO';
-        return `
-🧾 *${titulo}*
-CLÍNICA DENTAL
-------------------------------
-📅 Fecha: ${new Date(currentTicket.fecha).toLocaleString()}
-🔖 Folio: ${currentTicket.folio}
-👤 ${currentTicket.isExpense ? 'Destino' : 'Paciente'}: ${currentTicket.patient_name}
-📝 Concepto: ${currentTicket.concepto || 'Servicios Dentales'}
-------------------------------
-💰 *TOTAL: $${currentTicket.monto_total?.toFixed(2)}*
-💳 Método: ${currentTicket.metodo_pago?.toUpperCase()}
-------------------------------
-${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!'}
-        `.trim();
-    };
-
-    const handleShareWhatsApp = () => {
-        const text = encodeURIComponent(getTicketText());
-        const phoneNumber = currentTicket.telefono ? currentTicket.telefono.replace(/\D/g, '') : '';
-        const url = phoneNumber ? `https://wa.me/${phoneNumber}?text=${text}` : `https://wa.me/?text=${text}`;
-        window.open(url, '_blank');
     };
 
     const handlePrintTicket = () => {
@@ -280,35 +222,24 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
         w.document.write(`<div class="left"><p><strong>Folio:</strong> ${currentTicket.folio}</p><p><strong>${currentTicket.isExpense ? 'Destino' : 'Paciente'}:</strong> ${currentTicket.patient_name}</p><p><strong>Concepto:</strong> ${currentTicket.concepto}</p></div><div class="line"></div>`);
         w.document.write(`<div class="flex"><strong>TOTAL:</strong><span>$${currentTicket.monto_total?.toFixed(2)}</span></div>`);
         w.document.write(`<div class="flex"><span>Método:</span><span>${currentTicket.metodo_pago?.toUpperCase()}</span></div>`);
-        w.document.write(`<div class="line"></div><p>${currentTicket.isExpense ? 'Firma de Autorización' : '¡Gracias por su visita!'}</p>`);
+        w.document.write(`<div class="line"></div><p>${currentTicket.isExpense ? 'Firma Autorizada' : '¡Gracias por su preferencia!'}</p>`);
         w.document.write('</body></html>');
         w.document.close();
         setTimeout(() => w.print(), 250);
     };
 
-    const handleRealizarCorte = async (e) => {
-        e.preventDefault();
-        try {
-            // El sistema calcula: Fondo Inicial + Ventas Efectivo - Gastos Efectivo
-            const montoEsperadoSistema = parseFloat(corteData.inicial) + summary.efectivoEnCaja;
-
-            const res = await client.post('/finanzas/caja/corte', {
-                monto_inicial: parseFloat(corteData.inicial),
-                monto_final_real: parseFloat(corteData.final),
-                monto_sistema: montoEsperadoSistema
-            });
-            setCorteResult(res.data);
-            toast.success("Corte Z registrado");
-        } catch (error) { toast.error("Error al realizar corte"); }
+    const handleShareWhatsApp = () => {
+        const text = encodeURIComponent(`Hola, envío comprobante de ${currentTicket.isExpense ? 'egreso' : 'pago'}. Monto: $${currentTicket.monto_total} - Concepto: ${currentTicket.concepto}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
     };
 
-    // --- UTILS ---
+    // Progreso de la barra de metas
     const progressPercent = Math.min((summary.totalIngresos / dailyGoal) * 100, 100);
 
     return (
         <div className="space-y-6 animate-fade-in font-sans text-gray-800 p-6 bg-gray-50 min-h-screen">
 
-            {/* HEADER CON METAS Y RESUMEN (IRRESISTIBLE #1) */}
+            {/* HEADER CON METAS Y RESUMEN */}
             <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10"><TrophyIcon className="w-40 h-40" /></div>
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-end gap-4">
@@ -338,7 +269,7 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
 
             {/* BARRA DE NAVEGACIÓN */}
             <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-gray-800">Operaciones</h1>
+                <h1 className="text-xl font-bold text-gray-800">Operaciones Financieras</h1>
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1 flex">
                     <button onClick={() => setActiveTab('caja')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'caja' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}>Caja</button>
                     <button onClick={() => { setActiveTab('reportes'); loadReportesGeneral(); }} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'reportes' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:bg-gray-50'}`}>Reportes</button>
@@ -346,158 +277,121 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
                 </div>
             </div>
 
-            {/* --- PESTAÑA CAJA --- */}
-            {activeTab === 'catalogo' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* COLUMNA IZQUIERDA: FORMULARIO */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
-                        <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                            <PlusIcon className="w-5 h-5 mr-2 text-blue-600" /> Nuevo Servicio
-                        </h3>
+            {/* --- PESTAÑA 1: CAJA (COBROS Y GASTOS) --- */}
+            {activeTab === 'caja' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
 
-                        <form onSubmit={handleSaveService} className="space-y-4">
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase">Código Interno</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-colors"
-                                    value={newService.codigo}
-                                    onChange={e => setNewService({ ...newService, codigo: e.target.value })}
-                                    placeholder="Ej. EXT-001"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase">Nombre del Servicio</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-colors"
-                                    value={newService.nombre}
-                                    onChange={e => setNewService({ ...newService, nombre: e.target.value })}
-                                    placeholder="Ej. Extracción Simple"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Precio Público</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                                        <input
-                                            type="number"
-                                            className="w-full pl-6 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-700"
-                                            value={newService.precio}
-                                            onChange={e => setNewService({ ...newService, precio: e.target.value })}
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Costo (Opcional)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-2.5 text-gray-400">$</span>
-                                        <input
-                                            type="number"
-                                            className="w-full pl-6 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                                            value={newService.costo}
-                                            onChange={e => setNewService({ ...newService, costo: e.target.value })}
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase">Categoría</label>
-                                <select
-                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                                    value={newService.categoria}
-                                    onChange={e => setNewService({ ...newService, categoria: e.target.value })}
-                                >
-                                    <option value="dental">Dental</option>
-                                    <option value="medicina">Medicina General</option>
-                                    <option value="ortodoncia">Ortodoncia</option>
-                                    <option value="cirugia">Cirugía</option>
-                                    <option value="rayos-x">Rayos X / Imagen</option>
-                                    <option value="laboratorio">Laboratorio</option>
-                                    <option value="otro">Otro</option>
-                                </select>
-                            </div>
-
-                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 active:scale-95 flex justify-center items-center">
-                                <PlusIcon className="w-5 h-5 mr-2" />
-                                Guardar Servicio
+                    {/* COLUMNA IZQUIERDA: LISTA DE PENDIENTES */}
+                    <div className="lg:col-span-2 space-y-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-gray-700">Cuentas por Cobrar</h3>
+                            <button
+                                onClick={() => setShowExpenseModal(true)}
+                                className="text-xs bg-rose-100 text-rose-700 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-200 transition-colors flex items-center gap-1"
+                            >
+                                <ArrowTrendingDownIcon className="w-4 h-4" /> Registrar Gasto
                             </button>
-                        </form>
+                        </div>
+
+                        {pendientes.length === 0 ? (
+                            <div className="bg-white p-12 rounded-2xl border border-gray-200 text-center flex flex-col items-center justify-center text-gray-400">
+                                <BanknotesIcon className="w-16 h-16 mb-4 text-gray-200" />
+                                <p>No hay cobros pendientes</p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-3">
+                                {pendientes.map((p) => (
+                                    <div
+                                        key={p.id}
+                                        onClick={() => setSelectedBudget(p)}
+                                        className={`bg-white p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md flex justify-between items-center ${selectedBudget?.id === p.id ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50' : 'border-gray-200'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${selectedBudget?.id === p.id ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                                                {p.patient_name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-800">{p.patient_name}</h4>
+                                                <p className="text-xs text-gray-500">Folio Presupuesto: #{p.id}</p>
+                                                <p className="text-xs text-gray-400">{new Date(p.fecha_creacion).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-lg text-gray-800">${p.monto_total.toFixed(2)}</p>
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-bold uppercase">Pendiente</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    {/* COLUMNA DERECHA: TABLA DE SERVICIOS */}
-                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
-                        <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-700 flex items-center">
-                                <QueueListIcon className="w-5 h-5 mr-2 text-gray-400" />
-                                Catálogo de Precios
-                            </h3>
-                            <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold border border-blue-200">
-                                {servicios.length} Servicios Activos
-                            </span>
-                        </div>
+                    {/* COLUMNA DERECHA: PANEL DE COBRO */}
+                    <div className="h-fit">
+                        {selectedBudget ? (
+                            <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-100 sticky top-6 animate-scale-up">
+                                <h3 className="text-gray-500 text-xs font-bold uppercase mb-4 tracking-wider">Detalle de Cobro</h3>
 
-                        <div className="overflow-x-auto flex-1 overflow-y-auto">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-white text-gray-500 text-xs uppercase font-semibold sticky top-0 shadow-sm z-10">
-                                    <tr>
-                                        <th className="px-6 py-4 text-left bg-gray-50/50 backdrop-blur-sm">Código</th>
-                                        <th className="px-6 py-4 text-left bg-gray-50/50 backdrop-blur-sm">Servicio</th>
-                                        <th className="px-6 py-4 text-center bg-gray-50/50 backdrop-blur-sm">Categoría</th>
-                                        <th className="px-6 py-4 text-right bg-gray-50/50 backdrop-blur-sm">Precio</th>
-                                        <th className="px-6 py-4 text-center bg-gray-50/50 backdrop-blur-sm">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {servicios.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="5" className="p-12 text-center text-gray-400 flex flex-col items-center justify-center">
-                                                <QueueListIcon className="w-12 h-12 mb-2 text-gray-200" />
-                                                <p>No hay servicios registrados.</p>
-                                                <p className="text-xs mt-1">Usa el formulario de la izquierda para agregar uno.</p>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        servicios.map((s) => (
-                                            <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
-                                                <td className="px-6 py-4 text-gray-500 font-mono text-xs">{s.codigo}</td>
-                                                <td className="px-6 py-4 font-bold text-gray-800">{s.nombre}</td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-md text-xs font-medium capitalize border border-gray-200">
-                                                        {s.categoria}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">
-                                                        ${s.precio.toFixed(2)}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex justify-center items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button className="p-1.5 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg transition-colors" title="Eliminar (No implementado en demo)">
-                                                            <XMarkIcon className="w-5 h-5" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                <div className="text-center mb-6">
+                                    <p className="text-gray-500 text-sm">Total a Pagar</p>
+                                    <p className="text-4xl font-black text-blue-600">${selectedBudget.monto_total.toFixed(2)}</p>
+                                    <p className="text-gray-800 font-medium mt-1">{selectedBudget.patient_name}</p>
+                                </div>
+
+                                <div className="space-y-4 mb-6">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-1 block">Método de Pago</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => setPaymentMethod('efectivo')}
+                                                className={`p-2 rounded-lg text-sm font-bold border transition-all ${paymentMethod === 'efectivo' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                            >
+                                                💵 Efectivo
+                                            </button>
+                                            <button
+                                                onClick={() => setPaymentMethod('tarjeta')}
+                                                className={`p-2 rounded-lg text-sm font-bold border transition-all ${paymentMethod === 'tarjeta' ? 'bg-purple-50 border-purple-500 text-purple-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                            >
+                                                💳 Tarjeta
+                                            </button>
+                                            <button
+                                                onClick={() => setPaymentMethod('transferencia')}
+                                                className={`p-2 rounded-lg text-sm font-bold border transition-all ${paymentMethod === 'transferencia' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                            >
+                                                🏦 Transferencia
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleCobrar}
+                                    className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-xl transition-transform active:scale-95 flex justify-center items-center"
+                                >
+                                    <CurrencyDollarIcon className="w-5 h-5 mr-2" />
+                                    Confirmar Cobro
+                                </button>
+
+                                <button
+                                    onClick={() => setSelectedBudget(null)}
+                                    className="w-full mt-2 py-2 text-gray-400 text-xs hover:text-gray-600 font-medium"
+                                >
+                                    Cancelar selección
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="bg-gray-100 border border-gray-200 border-dashed rounded-2xl p-8 text-center h-full min-h-[300px] flex flex-col items-center justify-center text-gray-400">
+                                <CreditCardIcon className="w-12 h-12 mb-2 opacity-50" />
+                                <p className="font-medium">Selecciona una cuenta<br />para cobrar</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* --- PESTAÑA REPORTES --- */}
+            {/* --- PESTAÑA 2: REPORTES --- */}
             {activeTab === 'reportes' && (
-                <div className="space-y-6">
+                <div className="space-y-6 animate-fade-in">
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
                             <input type="date" className="bg-transparent text-sm border-r border-gray-300 pr-2 outline-none text-gray-600" value={dateRange.start} onChange={e => setDateRange({ ...dateRange, start: e.target.value })} />
@@ -541,6 +435,7 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
                                             </td>
                                         </tr>
                                     ))}
+                                    {salesData.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">No hay movimientos en este rango.</td></tr>}
                                 </tbody>
                             </table>
                         </div>
@@ -549,28 +444,107 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
                     {reportSubTab === 'cortes' && (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="px-6 py-4 bg-gray-50 border-b border-gray-200"><h3 className="font-bold text-gray-700">Historial de Cortes de Caja</h3></div>
-                            {/* Tabla de cortes existente... simplificada para la demo */}
-                            <div className="p-8 text-center text-gray-400">Selecciona un rango de fechas para ver cortes pasados.</div>
+                            <table className="min-w-full text-sm">
+                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold"><tr><th className="px-6 py-3 text-left">Fecha</th><th className="px-6 py-3 text-right">Monto Inicial</th><th className="px-6 py-3 text-right">Sistema (Esperado)</th><th className="px-6 py-3 text-right">Real (Físico)</th><th className="px-6 py-3 text-right">Diferencia</th><th className="px-6 py-3 text-center">Usuario</th></tr></thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {cortesHistory.map((c) => (
+                                        <tr key={c.id}>
+                                            <td className="px-6 py-3">{new Date(c.fecha).toLocaleString()}</td>
+                                            <td className="px-6 py-3 text-right">${c.monto_inicial.toFixed(2)}</td>
+                                            <td className="px-6 py-3 text-right">${c.monto_sistema.toFixed(2)}</td>
+                                            <td className="px-6 py-3 text-right font-bold">${c.monto_real.toFixed(2)}</td>
+                                            <td className={`px-6 py-3 text-right font-bold ${c.diferencia < 0 ? 'text-red-500' : c.diferencia > 0 ? 'text-green-500' : 'text-gray-400'}`}>{c.diferencia.toFixed(2)}</td>
+                                            <td className="px-6 py-3 text-center text-xs">{c.usuario}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* --- PESTAÑA CATÁLOGO (Igual que antes) --- */}
+            {/* --- PESTAÑA 3: CATÁLOGO --- */}
             {activeTab === 'catalogo' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+                    {/* FORMULARIO */}
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 h-fit">
-                        <h3 className="font-bold text-gray-800 mb-4 flex items-center"><PlusIcon className="w-5 h-5 mr-2 text-blue-600" /> Nuevo Servicio</h3>
-                        {/* Formulario existente */}
+                        <h3 className="font-bold text-gray-800 mb-4 flex items-center">
+                            <PlusIcon className="w-5 h-5 mr-2 text-blue-600" /> Nuevo Servicio
+                        </h3>
+                        <form onSubmit={handleSaveService} className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Código Interno</label>
+                                <input type="text" className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-colors" value={newService.codigo} onChange={e => setNewService({ ...newService, codigo: e.target.value })} placeholder="Ej. EXT-001" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Nombre del Servicio</label>
+                                <input type="text" className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-colors" value={newService.nombre} onChange={e => setNewService({ ...newService, nombre: e.target.value })} placeholder="Ej. Extracción Simple" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Precio</label>
+                                    <input type="number" className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={newService.precio} onChange={e => setNewService({ ...newService, precio: e.target.value })} placeholder="0.00" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Costo</label>
+                                    <input type="number" className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" value={newService.costo} onChange={e => setNewService({ ...newService, costo: e.target.value })} placeholder="0.00" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Categoría</label>
+                                <select className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white" value={newService.categoria} onChange={e => setNewService({ ...newService, categoria: e.target.value })}>
+                                    <option value="dental">Dental</option>
+                                    <option value="medicina">Medicina General</option>
+                                    <option value="ortodoncia">Ortodoncia</option>
+                                    <option value="cirugia">Cirugía</option>
+                                    <option value="rayos-x">Rayos X / Imagen</option>
+                                    <option value="laboratorio">Laboratorio</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 active:scale-95 flex justify-center items-center">
+                                <PlusIcon className="w-5 h-5 mr-2" /> Guardar
+                            </button>
+                        </form>
                     </div>
-                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                        {/* Tabla existente */}
-                        <div className="p-4 text-center text-gray-500">Tabla de catálogo de servicios...</div>
+
+                    {/* TABLA CATÁLOGO */}
+                    <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
+                        <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <h3 className="font-bold text-gray-700 flex items-center">
+                                <QueueListIcon className="w-5 h-5 mr-2 text-gray-400" /> Catálogo de Precios
+                            </h3>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold border border-blue-200">{servicios.length} Servicios</span>
+                        </div>
+                        <div className="overflow-x-auto flex-1 overflow-y-auto">
+                            <table className="min-w-full text-sm">
+                                <thead className="bg-white text-gray-500 text-xs uppercase font-semibold sticky top-0 shadow-sm z-10">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left bg-gray-50/50 backdrop-blur-sm">Código</th>
+                                        <th className="px-6 py-4 text-left bg-gray-50/50 backdrop-blur-sm">Servicio</th>
+                                        <th className="px-6 py-4 text-center bg-gray-50/50 backdrop-blur-sm">Categoría</th>
+                                        <th className="px-6 py-4 text-right bg-gray-50/50 backdrop-blur-sm">Precio</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {servicios.map((s) => (
+                                        <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
+                                            <td className="px-6 py-4 text-gray-500 font-mono text-xs">{s.codigo}</td>
+                                            <td className="px-6 py-4 font-bold text-gray-800">{s.nombre}</td>
+                                            <td className="px-6 py-4 text-center"><span className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-md text-xs font-medium capitalize border border-gray-200">{s.categoria}</span></td>
+                                            <td className="px-6 py-4 text-right"><span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">${s.precio.toFixed(2)}</span></td>
+                                        </tr>
+                                    ))}
+                                    {servicios.length === 0 && <tr><td colSpan="4" className="p-12 text-center text-gray-400">No hay servicios registrados.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* --- MODAL REGISTRAR GASTO (NUEVO) --- */}
+            {/* --- MODAL REGISTRAR GASTO --- */}
             {showExpenseModal && (
                 <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-scale-up">
@@ -579,7 +553,7 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
                             <button onClick={() => setShowExpenseModal(false)}><XMarkIcon className="w-6 h-6 text-gray-400" /></button>
                         </div>
                         <form onSubmit={handleRegistrarGasto} className="space-y-4">
-                            <div><label className="text-xs font-bold text-gray-500">Concepto (¿En qué se gastó?)</label><input autoFocus required className="w-full p-2 border rounded-lg" placeholder="Ej. Pago de garrafones" value={expenseData.concepto} onChange={e => setExpenseData({ ...expenseData, concepto: e.target.value })} /></div>
+                            <div><label className="text-xs font-bold text-gray-500">Concepto</label><input autoFocus required className="w-full p-2 border rounded-lg" placeholder="Ej. Pago de garrafones" value={expenseData.concepto} onChange={e => setExpenseData({ ...expenseData, concepto: e.target.value })} /></div>
                             <div><label className="text-xs font-bold text-gray-500">Monto</label><input type="number" required className="w-full p-2 border rounded-lg" placeholder="0.00" value={expenseData.monto} onChange={e => setExpenseData({ ...expenseData, monto: e.target.value })} /></div>
                             <div>
                                 <label className="text-xs font-bold text-gray-500">Método de Salida</label>
@@ -594,7 +568,7 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
                 </div>
             )}
 
-            {/* --- MODAL CORTE DE CAJA (ACTUALIZADO CON GASTOS) --- */}
+            {/* --- MODAL CORTE DE CAJA --- */}
             {showCorteModal && (
                 <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl animate-scale-up border border-gray-100">
@@ -615,7 +589,6 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
                             </form>
                         ) : (
                             <div className="space-y-6 text-center">
-                                {/* Resultado del corte (Igual que antes) */}
                                 <div className={`p-4 rounded-xl ${corteResult.diferencia === 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
                                     <h2 className="text-2xl font-black mt-1">{corteResult.estado}</h2>
                                     <p className="text-sm">Diferencia: ${corteResult.diferencia.toFixed(2)}</p>
@@ -627,7 +600,7 @@ ${currentTicket.isExpense ? 'Salida autorizada' : '¡Gracias por su preferencia!
                 </div>
             )}
 
-            {/* --- MODAL DE TICKET (Igual que antes) --- */}
+            {/* --- MODAL DE TICKET --- */}
             {showTicketModal && currentTicket && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-scale-up overflow-hidden">
